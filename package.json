@@ -1,0 +1,22 @@
+{
+  "name": "csv-parser",
+  "version": "1.0.0",
+  "main": "src/main.ts",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "@types/papaparse": "^5.3.10",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.1.0",
+    "firebase-admin": "^11.11.0",
+    "papaparse": "^5.4.1"
+  },
+  "scripts": {
+    "parse": "yarn ts-node src/main.ts",
+    "start": "nodemon src/server.ts"
+  }
+}
