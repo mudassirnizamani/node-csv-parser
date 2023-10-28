@@ -4,4 +4,4 @@ import { parseFile } from "./parser";
 // 1: Path of CSV file.
 // 2: Weather the contact should be updated based on phone numbers if any already exists.
 // 3: tags, for eg: parseFile("../patients.csv", true, ["promo", "promo 2"])
-parseFile("../patients.csv", false);
+parseFile("../../patients.csv", false);

@@ -16,7 +16,8 @@
     "papaparse": "^5.4.1"
   },
   "scripts": {
-    "parse": "yarn ts-node src/main.ts",
+    "parse": "node src/js/main.js",
+    "parse:ts": "yarn ts-node src/ts/main.ts",
     "start": "nodemon src/server.ts"
   }
 }
