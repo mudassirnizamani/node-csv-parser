@@ -19,4 +19,5 @@ export type FileHeaders = {
   last_name: number | null;
   phone_number: number | null;
   email: number | null;
+  length: number;
 };

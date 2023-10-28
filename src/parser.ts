@@ -24,6 +24,7 @@ function parseHeaders(row: Array<string>): FileHeaders {
     last_name: null,
     phone_number: null,
     email: null,
+    length: row.length,
   };
 
   for (let index = 0; index < row.length; index++) {
@@ -44,6 +45,20 @@ function parseHeaders(row: Array<string>): FileHeaders {
   return result;
 }
 
+function validateParsedHeaders(
+  parsedHeaders: FileHeaders,
+  result: ResultData
+): void {
+  if (parsedHeaders.email === null)
+    result.errors.push("email header doesn't exist in the file");
+  else if (parsedHeaders.first_name === null)
+    result.errors.push("first name header doesn't exist in the file");
+  else if (parsedHeaders.last_name === null)
+    result.errors.push("last name header doesn't exist in the file");
+  else if (parsedHeaders.phone_number === null)
+    result.errors.push("phone number header doesn't exist in the file");
+}
+
 // This functions gets the data and parameters,
 // then saves the data and returns the result.
 async function saveParsedFileData(
@@ -51,12 +66,7 @@ async function saveParsedFileData(
   updateBasedOnPhone: boolean,
   importTags?: string[]
 ): Promise<ResultData> {
-  const headers: FileHeaders = parseHeaders(data[0]);
   let contactsData: Array<ContactData> = [];
-  const batch: FirebaseFirestore.WriteBatch = db.batch();
-  const contactsDocRef: CollectionReference<FirebaseFirestore.DocumentData> =
-    db.collection("contacts");
-
   let result: ResultData = {
     contactsData: contactsData,
     errors: [],
@@ -64,9 +74,21 @@ async function saveParsedFileData(
     skipped: 0,
     updated: 0,
   };
+  const headers: FileHeaders = parseHeaders(data[0]);
+  const batch: FirebaseFirestore.WriteBatch = db.batch();
+  const contactsDocRef: CollectionReference<FirebaseFirestore.DocumentData> =
+    db.collection("contacts");
 
-  for (let index = 1; index <= 5; index++) {
+  validateParsedHeaders(headers, result);
+
+  for (let index = 1; index <= data.length; index++) {
     const contactData: string[] = data[index];
+
+    if (contactData.length !== headers.length) {
+      result.skipped++;
+      result.errors.push(`contact ${index} is invalid`);
+      break;
+    }
 
     const userPhoneNumber: number | null = convertPhoneNumber(
       contactData[headers.phone_number!]
