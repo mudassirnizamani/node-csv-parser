@@ -3,7 +3,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 
 try {
   initializeApp({
-    credential: cert(require("../../key.json")),
+    credential: cert(require("../key.json")),
   });
 } catch (e) {
   throw new Error("Provide credentials of your firestore database");

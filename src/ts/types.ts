@@ -21,3 +21,10 @@ export type FileHeaders = {
   email: number | null;
   length: number;
 };
+
+export type ManualMapHeadersData = {
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  email: string;
+};

@@ -1,63 +1,18 @@
-const { parse } = require("papaparse");
-const { db } = require("./firestore");
-const { CollectionReference } = require("@google-cloud/firestore");
 const fs = require("fs");
 const path = require("path");
-
-function convertPhoneNumber(phoneNumber) {
-  if (
-    phoneNumber === null ||
-    phoneNumber === undefined ||
-    phoneNumber.length < 5
-  )
-    return null;
-
-  return Number(phoneNumber);
-}
-
-// This function get the first row of file and then returns
-// the position of headers.
-function parseHeaders(row) {
-  let result = {
-    first_name: null,
-    last_name: null,
-    phone_number: null,
-    email: null,
-    length: row.length,
-  };
-
-  for (let index = 0; index < row.length; index++) {
-    const element = row[index].replace(" ", "").toLowerCase();
-
-    if (element.includes("email")) result.email = index;
-    else if (element.includes("firstname")) result.first_name = index;
-    else if (element.includes("lastname")) result.last_name = index;
-    else if (
-      element.includes("phone") ||
-      element.includes("mobile") ||
-      element.includes("tel") ||
-      element.includes("cell")
-    )
-      result.phone_number = index;
-  }
-
-  return result;
-}
-
-function validateParsedHeaders(parsedHeaders, result) {
-  if (parsedHeaders.email === null)
-    result.errors.push("email header doesn't exist in the file");
-  else if (parsedHeaders.first_name === null)
-    result.errors.push("first name header doesn't exist in the file");
-  else if (parsedHeaders.last_name === null)
-    result.errors.push("last name header doesn't exist in the file");
-  else if (parsedHeaders.phone_number === null)
-    result.errors.push("phone number header doesn't exist in the file");
-}
+const papaparse = require("papaparse");
+const { db } = require("./firestore");
+const { convertPhoneNumber } = require("./helpers");
+const { mapHeaders, validateMappedHeaders } = require("./headersMapper");
 
 // This functions gets the data and parameters,
 // then saves the data and returns the result.
-async function saveParsedFileData(data, updateBasedOnPhone, importTags) {
+async function saveParsedFileData(
+  data,
+  updateBasedOnPhone,
+  headers,
+  importTags
+) {
   let contactsData = [];
   let result = {
     contactsData: contactsData,
@@ -66,11 +21,15 @@ async function saveParsedFileData(data, updateBasedOnPhone, importTags) {
     skipped: 0,
     updated: 0,
   };
-  const headers = parseHeaders(data[0]);
   const batch = db.batch();
   const contactsDocRef = db.collection("contacts");
 
-  validateParsedHeaders(headers, result);
+  const mappedHeadersResult = validateMappedHeaders(headers);
+  if (mappedHeadersResult.length > 0) {
+    result.errors.push(...mappedHeadersResult);
+  }
+
+  console.log("update contacts based on phone: ", updateBasedOnPhone);
 
   for (let index = 1; index <= data.length; index++) {
     const contactData = data[index];
@@ -142,19 +101,64 @@ async function saveParsedFileData(data, updateBasedOnPhone, importTags) {
   return result;
 }
 
-async function parseFile(csvFilePath, updateBasedOnPhone, tags) {
+// This function will automatically map the headers of the csv file.
+// Only use this func if you are sure about the headers of the file
+async function parse(csvFilePath, updateBasedOnPhone, tags) {
   const csvData = fs.readFileSync(path.resolve(__dirname, csvFilePath), {
     encoding: "utf-8",
   });
 
-  const parserResult = parse(csvData, { delimiter: "," });
+  const parserResult = papaparse.parse(csvData, { delimiter: "," });
+
+  const headers = mapHeaders(parserResult.data[0]);
+
   const result = await saveParsedFileData(
     parserResult.data,
     updateBasedOnPhone,
+    headers,
     tags
   );
 
-  console.log(result);
+  return result;
 }
 
-module.exports = { parseFile };
+function parseCsvFileUsingPath(csvFilePath) {
+  const csvData = fs.readFileSync(path.resolve(__dirname, csvFilePath), {
+    encoding: "utf-8",
+  });
+
+  const parserResult = papaparse.parse(csvData, { delimiter: "," });
+
+  if (parserResult.errors.length === 0) return parserResult.data;
+  else return null;
+}
+
+async function parseUsingCustomHeader(
+  csvFileData,
+  updateBasedOnPhone,
+  headers,
+  tags
+) {
+  const mappedHeadersResult = validateMappedHeaders(headers);
+
+  if (mappedHeadersResult.length > 0) {
+    throw new Error("Mapped headers are invalid");
+  }
+
+  const result = await saveParsedFileData(
+    csvFileData,
+    updateBasedOnPhone,
+    headers,
+    tags
+  );
+
+  return result;
+}
+
+module.exports = {
+  parse,
+  parseUsingCustomHeader,
+  parseCsvFileUsingPath,
+  mapHeaders,
+  validateMappedHeaders,
+};
